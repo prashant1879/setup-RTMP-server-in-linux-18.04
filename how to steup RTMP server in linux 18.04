@@ -1,0 +1,103 @@
+For set up RTMP server in fresh linux 18.04 LTS
+
+
+#Installing nginx with RTMP module
+sudo apt-get install build-essential libpcre3 libpcre3-dev libssl-dev 
+
+#download nginx server
+sudo wget http://nginx.org/download/nginx-1.15.1.tar.gz
+
+#Next, get the RTMP module source code from git:
+sudo wget https://github.com/sergey-dryabzhinsky/nginx-rtmp-module/archive/dev.zip 
+
+#install gZip libraery in new server/ not installed.
+sudo apt-get install --reinstall zlibc zlib1g zlib1g-dev 
+
+#Unpack/unzip them both, and enter the nginx directory:
+$ tar -zxvf nginx-1.15.1.tar.gz
+$ unzip dev.zip
+$ cd nginx-1.15.1 
+
+#Now we build nginx:
+$ ./configure --with-http_ssl_module --add-module=../nginx-rtmp-module-dev
+$ make
+$ sudo make install 
+
+#start ngnix
+$ sudo /usr/local/nginx/sbin/nginx 
+
+
+# Configuring nginx to use RTMP
+
+#Open your config file, located by default at /usr/local/nginx/conf/nginx.conf and add the following at the very end of the file:
+gedit /usr/local/nginx/conf/nginx.conf 
+
+
+rtmp {
+        server {
+                listen 1935;
+                chunk_size 4000;
+
+                application live {
+                        live on;
+                        #record off;
+			                  record on;
+                }
+
+		# video on demand for flv files
+	        application vod {
+        	    play /var/flvs;
+        	}
+ 
+	        # video on demand for mp4 files
+	        application vod2 {
+	            play /var/mp4s;
+	        }
+        }
+}
+
+
+# Restart nginx with:
+$ sudo /usr/local/nginx/sbin/nginx -s stop
+$ sudo /usr/local/nginx/sbin/nginx 
+
+#Your server should now be ready to accept RTMP streams! Let's try it out.
+#Create a new profile in OBS, and change your Broadcast Settings thusly:
+
+Streaming Service: Custom
+Server: rtmp://<your server ip>/live
+Play Path/Stream Key: test 
+
+#Now we are steup video to stream in path 
+#check ffmpeg installed or not 
+ffmpeg -version
+
+#if not then follow below step and if installed then skipped it.
+sudo apt update
+sudo apt install ffmpeg
+ffmpeg -version
+
+cd /var/
+#create a folder with flvs name and put video_2.mp4 (this is just example);
+
+#SERVER_IP : 127.0.0.1 (right now we are doing in local)
+
+ffmpeg -re -i /var/flvs/video_2.mp4 -c:v libx264 -preset veryfast -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv rtmp://<SERVER_IP>/live
+
+#if you have multiple videos then follow below.
+#now create a file and save it in /var/flvs with myfiles.txt name.
+cd /var/flvs/
+gedit myfiles.txt
+
+#note below code
+file vidoe_filename.mp4
+file video_2.mp4
+file PATH_TO_VIDEO_FILE.mp4
+
+#now push that fike to stream.
+
+ffmpeg -re -i /var/flvs/myfiles.txt -c:v libx264 -preset veryfast -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -ar 44100 -f flv rtmp://SERVER_IP/live
+
+#after that you can hit url in vlc or browser.
+rtmp://SERVER_IP/live
+
